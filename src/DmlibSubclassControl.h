@@ -242,10 +242,12 @@ namespace dmlib_subclass
 		LONG m_xScroll = ::GetSystemMetrics(SM_CXVSCROLL);
 		LONG m_yScroll = ::GetSystemMetrics(SM_CYVSCROLL);
 		bool m_isHot = false;
+		const bool m_isEdit = false;
 
 		BorderMetricsData() = delete;
 
-		explicit BorderMetricsData(HWND hWnd) noexcept
+		explicit BorderMetricsData(HWND hWnd)
+			: m_isEdit(dmlib_subclass::cmpWndClassName(hWnd, WC_EDIT))
 		{
 			setMetricsForDpi(dmlib_dpi::GetDpiForParent(hWnd));
 		}

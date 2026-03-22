@@ -1535,7 +1535,7 @@ static void ncPaintCustomBorder(HWND hWnd, const dmlib_subclass::BorderMetricsDa
 		roundness
 	);
 
-	if (DarkMode::isAtLeastWindows11() && hasFocus)
+	if (DarkMode::isAtLeastWindows11() && hasFocus && borderMetricsData.m_isEdit)
 	{
 		const RECT rcHighliteBottomLine{ rcClient.left, rcClient.bottom - dmlib_dpi::scale(2, hWnd), rcClient.right, rcClient.bottom};
 		dmlib_paint::paintRoundRect(hdc, rcHighliteBottomLine, DarkMode::getHighlightEdgePen(), DarkMode::getHighlightEdgeBrush(), roundness, roundness);
