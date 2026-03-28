@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -106,6 +106,8 @@ namespace dmlib_dpi
 	[[nodiscard]] BOOL IsValidDpiAwarenessContext(DPI_AWARENESS_CONTEXT value) noexcept;
 
 	DPI_AWARENESS_CONTEXT SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiContext) noexcept;
+
+	BOOL AdjustWindowRectExForDpi(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, UINT dpi) noexcept;
 
 	void loadIcon(HINSTANCE hinst, const wchar_t* pszName, int cx, int cy, HICON& hicon) noexcept;
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -317,6 +317,9 @@ namespace DarkMode
 
 	inline void DummySetHotKeyCtrlSubclass(HWND) {}
 	inline void DummyRemoveHotKeyCtrlSubclass(HWND) {}
+
+	inline void DummySetDTPCtrlSubclass(HWND) {}
+	inline void DummyRemoveDTPCtrlSubclass(HWND) {}
 
 	inline void DummySetChildCtrlsSubclassAndThemeEx(HWND, bool, bool) {}
 	inline void DummySetChildCtrlsSubclassAndTheme(HWND) {}
@@ -740,11 +743,26 @@ namespace DarkMode
 	using fnSetStaticTextCtrlSubclass = void (*)(HWND hWnd);
 	inline fnSetStaticTextCtrlSubclass setStaticTextCtrlSubclass = nullptr;
 
+	using fnRemoveStaticTextCtrlSubclass = void (*)(HWND hWnd);
+	inline fnRemoveStaticTextCtrlSubclass removeStaticTextCtrlSubclass = nullptr;
+
 	using fnSetIPAddressCtrlSubclass = void (*)(HWND hWnd);
 	inline fnSetIPAddressCtrlSubclass setIPAddressCtrlSubclass = nullptr;
 
-	using fnRemoveStaticTextCtrlSubclass = void (*)(HWND hWnd);
-	inline fnRemoveStaticTextCtrlSubclass removeStaticTextCtrlSubclass = nullptr;
+	using fnRemoveIPAddressCtrlSubclass = void (*)(HWND hWnd);
+	inline fnRemoveIPAddressCtrlSubclass removeIPAddressCtrlSubclass = nullptr;
+
+	using fnSetHotKeyCtrlSubclass = void (*)(HWND hWnd);
+	inline fnSetHotKeyCtrlSubclass setHotKeyCtrlSubclass = nullptr;
+
+	using fnRemoveHotKeyCtrlSubclass = void (*)(HWND hWnd);
+	inline fnRemoveHotKeyCtrlSubclass removeHotKeyCtrlSubclass = nullptr;
+
+	using fnSetDTPCtrlSubclass = void (*)(HWND hWnd);
+	inline fnSetDTPCtrlSubclass setDTPCtrlSubclass = nullptr;
+
+	using fnRemoveDTPCtrlSubclass = void (*)(HWND hWnd);
+	inline fnRemoveDTPCtrlSubclass removeDTPCtrlSubclass = nullptr;
 
 	using fnSetChildCtrlsSubclassAndThemeEx = void (*)(HWND hParent, bool subclass, bool theme);
 	inline fnSetChildCtrlsSubclassAndThemeEx setChildCtrlsSubclassAndThemeEx = nullptr;

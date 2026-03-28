@@ -1,7 +1,7 @@
 ﻿// SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -214,7 +214,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow, HWND& hMain)
 	g_hInst = hInstance; // Store instance handle in our global variable
 
 	hMain = CreateWindowExW(0, g_szWindowClass.c_str(), g_szTitle.c_str(), WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, 0, Scale(1040), Scale(550), nullptr, nullptr, hInstance, nullptr);
+		CW_USEDEFAULT, 0, Scale(1040), Scale(560), nullptr, nullptr, hInstance, nullptr);
 
 	if (hMain == nullptr)
 	{
@@ -274,6 +274,7 @@ enum class IdCtrl : WORD
 	treeview,
 	hotkey,
 	richEdit,
+	datePick,
 	monthCal,
 	scrollH = monthCal + 901,
 	scrollV,
@@ -499,7 +500,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			static const int heightListBox = Scale(100);
 			static const int heightListView = Scale(98);
 			static const int heightTreeView = Scale(90);
-			static const int heightRichEdit = Scale(95);
+			static const int heightRichEdit = Scale(80);
 			static const int heightMonthCal = Scale(168);
 
 			static const int xPos1stCol = 10;
@@ -561,7 +562,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			static const int ySTTreeView = ySTListView + yPosCtrl + ((heightListView + yPosCtrlEnd) * 2) + yGap;
 
 			static const int yGBRichEdit = yRow + heightGBHotKey + yGap;
-			static const int ySTMonthCal = yGBRichEdit + heightGBRichEdit + yGap;
+			static const int yGBDatePicker = yGBRichEdit + heightGBRichEdit + yGap;
+			static const int ySTMonthCal = yGBDatePicker + heightGBHotKey + yGap;
 
 			static const int xPosSplit = xPos1stColCtrl + xGap + wBtn;
 
@@ -624,6 +626,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			static const int yHotKey = yRow + yPosCtrl + ((heightCtrl + heightEditGap) * 0);
 			static const int yRichEdit = yGBRichEdit + yPosCtrl + ((heightRichEdit + heightEditGap) * 0);
+			static const int yDatePicker = yGBDatePicker + yPosCtrl;
 			static const int yMonthCal = ySTMonthCal + yPosCtrl;
 
 			static const int xToolbar = Scale(100);
@@ -1022,7 +1025,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (hModRich != nullptr)
 			{
 				static const std::wstring richEditText = L"{\\rtf1\\ansi\n"
-					L"\\line\n"
 					L"Darkmodelib\\line\n"
 					L"\\line\n"
 					L"by\\line\n"
@@ -1034,6 +1036,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				::SetWindowSubclass(hRichEdit, RichEditNoTabSubclass, static_cast<UINT_PTR>(IdCtrl::richEdit), 0);
 			}
+
+			// --- Date Time Picker ---
+			createCtrl(WC_BUTTON, L"Date Time Picker", BS_GROUPBOX,
+				xPos5thCol, yGBDatePicker, wGroup5thCol, heightGBHotKey);
+
+			createCtrl(DATETIMEPICK_CLASS, nullptr, DTS_LONGDATEFORMAT,
+				xPos5thColCtrl, yDatePicker, wCtrl5thCol, heightCtrl, IdCtrl::datePick);
 
 			// --- Month Calendar ---
 			createCtrl(WC_STATIC, L"Month Calendar:", SS_LEFT,

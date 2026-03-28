@@ -117,6 +117,8 @@ EXPORTS
 	removeIPAddressCtrlSubclass
 	setHotKeyCtrlSubclass
 	removeHotKeyCtrlSubclass
+	setDTPCtrlSubclass
+	removeDTPCtrlSubclass
 	setChildCtrlsSubclassAndThemeEx
 	setChildCtrlsSubclassAndTheme
 	setChildCtrlsTheme

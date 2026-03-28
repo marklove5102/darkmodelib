@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -783,7 +783,7 @@ void DarkMode::initDarkModeEx([[maybe_unused]] const wchar_t* iniName)
 		DarkMode::setDefaultColors(true);
 #endif
 
-		DarkMode::setSysColor(COLOR_WINDOW, DarkMode::getBackgroundColor());
+		DarkMode::setSysColor(COLOR_WINDOW, DarkMode::getCtrlBackgroundColor());
 		DarkMode::setSysColor(COLOR_WINDOWTEXT, DarkMode::getTextColor());
 		DarkMode::setSysColor(COLOR_BTNFACE, DarkMode::getViewGridlinesColor());
 
@@ -2005,6 +2005,58 @@ static void setHotKeyCtrlSubclass(HWND hWnd, DarkModeParams p) noexcept
 }
 
 /**
+ * @brief Applies custom color subclassing to a date time picker control.
+ *
+ * Handles custom colors for date time picker control via hooks.
+ *
+ * @param[in] hWnd Handle to the date time picker control.
+ *
+ * @see dmlib_subclass::DTPSubclass()
+ * @see DarkMode::removeDTPCtrlSubclass()
+ */
+void DarkMode::setDTPCtrlSubclass(HWND hWnd)
+{
+	dmlib_subclass::SetSubclass(hWnd, dmlib_subclass::DTPSubclass, dmlib_subclass::SubclassID::dtp);
+}
+
+/**
+ * @brief Removes the custom color subclass from a date time picker control.
+ *
+ * @param[in] hWnd Handle to the date time picker control.
+ *
+ * @see dmlib_subclass::DTPSubclass()
+ * @see DarkMode::setDTPCtrlSubclass()
+ */
+void DarkMode::removeDTPCtrlSubclass(HWND hWnd)
+{
+	dmlib_subclass::RemoveSubclass(hWnd, dmlib_subclass::DTPSubclass, dmlib_subclass::SubclassID::dtp);
+}
+
+/**
+ * @brief Applies custom color subclassing to a date time picker control.
+ *
+ * Applies the subclass only if `p.m_subclass` is `true`.
+ * Disable visual style if to allow custom colors.
+ *
+ * @param[in]   hWnd    Handle to the date time picker control.
+ * @param[in]   p       Parameters controlling whether to apply subclassing.
+ *
+ * @see DarkMode::setDTPCtrlSubclass()
+ */
+static void setDTPCtrlSubclassAndTheme(HWND hWnd, DarkModeParams p) noexcept
+{
+	if (p.m_subclass)
+	{
+		DarkMode::setDTPCtrlSubclass(hWnd);
+	}
+
+	if (p.m_theme)
+	{
+		DarkMode::disableVisualStyle(hWnd, DarkMode::isEnabled());
+	}
+}
+
+/**
  * @brief Applies theming to a tree view control.
  *
  * Sets custom text and background colors, applies a themed window style,
@@ -2325,6 +2377,12 @@ static BOOL CALLBACK DarkEnumChildProc(HWND hWnd, LPARAM lParam)
 		return TRUE;
 	}
 
+	if (className == DATETIMEPICK_CLASS) // date and time picker
+	{
+		setDTPCtrlSubclassAndTheme(hWnd, p);
+		return TRUE;
+	}
+
 	if (className == MONTHCAL_CLASS) // month calendar
 	{
 		setMonthCalendarCtrlTheme(hWnd, p);
@@ -2333,11 +2391,6 @@ static BOOL CALLBACK DarkEnumChildProc(HWND hWnd, LPARAM lParam)
 
 #if 0 // for debugging
 	if (className == L"#32770") // dialog
-	{
-		return TRUE;
-	}
-
-	if (className == DATETIMEPICK_CLASS) // date and time picker
 	{
 		return TRUE;
 	}
@@ -3147,7 +3200,7 @@ void DarkMode::setDarkRichEdit(HWND hWnd)
 void DarkMode::setDarkMonthCalendar(HWND hWnd)
 {
 	DarkMode::disableVisualStyle(hWnd, DarkMode::isEnabled());
-	MonthCal_SetColor(hWnd, MCSC_BACKGROUND, DarkMode::isEnabled() ? DarkMode::getBackgroundColor() : ::GetSysColor(COLOR_3DFACE));
+	MonthCal_SetColor(hWnd, MCSC_BACKGROUND, DarkMode::isEnabled() ? DarkMode::getDlgBackgroundColor() : ::GetSysColor(COLOR_3DFACE));
 	if (DarkMode::isEnabled())
 	{
 		MonthCal_SetColor(hWnd, MCSC_MONTHBK, DarkMode::getCtrlBackgroundColor());

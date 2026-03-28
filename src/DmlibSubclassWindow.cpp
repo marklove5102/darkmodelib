@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -934,10 +934,11 @@ static void postpaintTreeViewItem(const LPNMTVCUSTOMDRAW& lptvcd) noexcept
 }
 
 /**
- * @brief Helper for handling `NM_CUSTOMDRAW` notification code.
+ * @brief Helper for handling `NM_CUSTOMDRAW` or `DTN_DROPDOWN` notification code.
  *
  * Handles `NM_CUSTOMDRAW` for custom draw for supported controls:
  * - toolbar, list view, tree view, trackbar, and rebar.
+ * Handles `DTN_DROPDOWN` for date time picker control.
  *
  * @param[in]   hWnd        Window handle for specific control.
  * @param[in]   uMsg        Message identifier.
@@ -947,10 +948,10 @@ static void postpaintTreeViewItem(const LPNMTVCUSTOMDRAW& lptvcd) noexcept
  *
  * @see dmlib_subclass::WindowNotifySubclass()
  */
-static LRESULT onNotifyCustomDraw(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT onNotifyCustomDrawOrDTPDropDown(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	if (auto* lpnmhdr = reinterpret_cast<LPNMHDR>(lParam);
-		lpnmhdr->code == NM_CUSTOMDRAW)
+	auto* lpnmhdr = reinterpret_cast<LPNMHDR>(lParam);
+	if (lpnmhdr->code == NM_CUSTOMDRAW)
 	{
 		const std::wstring className = dmlib_subclass::getWndClassName(lpnmhdr->hwndFrom);
 
@@ -979,6 +980,30 @@ static LRESULT onNotifyCustomDraw(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
 			return darkRebarNotifyCustomDraw(hWnd, uMsg, wParam, lParam);
 		}
 	}
+	else if (lpnmhdr->code == DTN_DROPDOWN
+		&& dmlib_subclass::cmpWndClassName(lpnmhdr->hwndFrom, DATETIMEPICK_CLASS))
+	{
+		HWND hCal = DateTime_GetMonthCal(lpnmhdr->hwndFrom);
+		DarkMode::setDarkMonthCalendar(hCal);
+
+		// Drop down container needs resizing to not clip month calendar
+		{
+			const UINT dpi = dmlib_dpi::GetDpiForWindow(hWnd);
+
+			RECT rcIdeal{};
+			MonthCal_GetMinReqRect(hCal, &rcIdeal);
+			// border + padding
+			const auto borderSize = MonthCal_GetCalendarBorder(hCal) + dmlib_dpi::scale(8, dpi);
+			HWND hCalContainer = ::GetParent(hCal);
+			const auto nStyle = static_cast<DWORD>(::GetWindowLongPtr(hCalContainer, GWL_STYLE));
+			const auto nExStyle = static_cast<DWORD>(::GetWindowLongPtr(hCalContainer, GWL_EXSTYLE));
+			dmlib_dpi::AdjustWindowRectExForDpi(&rcIdeal, nStyle, FALSE, nExStyle, dpi);
+			::SetWindowPos(hCalContainer, nullptr, 	0, 	0,
+				rcIdeal.right - rcIdeal.left + borderSize,
+				rcIdeal.bottom - rcIdeal.top + borderSize,
+				SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+		}
+	}
 	return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
@@ -996,7 +1021,7 @@ static LRESULT onNotifyCustomDraw(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
  * @param[in]   dwRefData   Reserved data (unused).
  * @return LRESULT Result of message processing.
  *
- * @see onNotifyCustomDraw()
+ * @see onNotifyCustomDrawOrDTPDropDown()
  * @see DarkMode::setWindowNotifyCustomDrawSubclass()
  * @see DarkMode::removeWindowNotifyCustomDrawSubclass()
  */
@@ -1024,7 +1049,7 @@ LRESULT CALLBACK dmlib_subclass::WindowNotifySubclass(
 				break;
 			}
 
-			return onNotifyCustomDraw(hWnd, uMsg, wParam, lParam);
+			return onNotifyCustomDrawOrDTPDropDown(hWnd, uMsg, wParam, lParam);
 		}
 
 		default:

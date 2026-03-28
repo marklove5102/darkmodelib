@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -459,6 +459,11 @@ namespace DarkMode
 	DMLIB_API void setHotKeyCtrlSubclass(HWND hWnd);
 	/// Removes the custom color subclass from a hot key control.
 	DMLIB_API void removeHotKeyCtrlSubclass(HWND hWnd);
+
+	/// Applies custom color subclassing to a date time picker control.
+	DMLIB_API void setDTPCtrlSubclass(HWND hWnd);
+	/// Removes the custom color subclass from a date time picker control.
+	DMLIB_API void removeDTPCtrlSubclass(HWND hWnd);
 
 	// ========================================================================
 	// Child Subclassing

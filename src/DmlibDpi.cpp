@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -30,6 +30,7 @@ using fnGetSystemMetricsForDpi = auto (WINAPI*)(int nIndex, UINT dpi) -> int;
 using fnSystemParametersInfoForDpi = auto (WINAPI*)(UINT uiAction, UINT uiParam, PVOID pvParam, UINT fWinIni, UINT dpi) -> BOOL;
 using fnIsValidDpiAwarenessContext = auto (WINAPI*)(DPI_AWARENESS_CONTEXT value) -> BOOL;
 using fnSetThreadDpiAwarenessContext = auto (WINAPI*)(DPI_AWARENESS_CONTEXT dpiContext) -> DPI_AWARENESS_CONTEXT;
+using fnAdjustWindowRectExForDpi = auto (WINAPI*)(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, UINT dpi) -> BOOL;
 
 using fnOpenThemeDataForDpi = auto (WINAPI*)(HWND hwnd, LPCWSTR pszClassList, UINT dpi) -> HTHEME;
 
@@ -75,6 +76,11 @@ extern "C"
 	{
 		return ::OpenThemeData(hwnd, pszClassList);
 	}
+
+	static BOOL WINAPI DummyAdjustWindowRectExForDpi(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, [[maybe_unused]] UINT dpi)
+	{
+		return ::AdjustWindowRectEx(lpRect, dwStyle, bMenu, dwExStyle);
+	}
 }
 
 static fnGetDpiForSystem pfGetDpiForSystem = DummyGetDpiForSystem;
@@ -83,13 +89,15 @@ static fnGetSystemMetricsForDpi pfGetSystemMetricsForDpi = DummyGetSystemMetrics
 static fnSystemParametersInfoForDpi pfSystemParametersInfoForDpi = DummySystemParametersInfoForDpi;
 static fnIsValidDpiAwarenessContext pfIsValidDpiAwarenessContext = DummyIsValidDpiAwarenessContext;
 static fnSetThreadDpiAwarenessContext pfSetThreadDpiAwarenessContext = DummySetThreadDpiAwarenessContext;
+static fnAdjustWindowRectExForDpi pfAdjustWindowRectExForDpi = DummyAdjustWindowRectExForDpi;
 static fnOpenThemeDataForDpi pfOpenThemeDataForDpi = DummyOpenThemeDataForDpi;
 
 bool dmlib_dpi::InitDpiAPI() noexcept
 {
 	if (HMODULE hUser32 = ::GetModuleHandleW(L"user32.dll"); hUser32 != nullptr)
 	{
-		if (const auto moduleUxtheme = dmlib_module::ModuleHandle{ L"uxtheme.dll" }; moduleUxtheme.isLoaded())
+		if (const auto moduleUxtheme = dmlib_module::ModuleHandle{ L"uxtheme.dll" };
+			moduleUxtheme.isLoaded())
 		{
 			bool allLoaded = true;
 
@@ -99,6 +107,7 @@ bool dmlib_dpi::InitDpiAPI() noexcept
 			allLoaded &= dmlib_module::LoadFn(hUser32, pfSystemParametersInfoForDpi, "SystemParametersInfoForDpi", DummySystemParametersInfoForDpi);
 			allLoaded &= dmlib_module::LoadFn(hUser32, pfIsValidDpiAwarenessContext, "IsValidDpiAwarenessContext", DummyIsValidDpiAwarenessContext);
 			allLoaded &= dmlib_module::LoadFn(hUser32, pfSetThreadDpiAwarenessContext, "SetThreadDpiAwarenessContext", DummySetThreadDpiAwarenessContext);
+			allLoaded &= dmlib_module::LoadFn(hUser32, pfAdjustWindowRectExForDpi, "AdjustWindowRectExForDpi", DummyAdjustWindowRectExForDpi);
 			allLoaded &= dmlib_module::LoadFn(moduleUxtheme.get(), pfOpenThemeDataForDpi, "OpenThemeDataForDpi", DummyOpenThemeDataForDpi);
 
 			return allLoaded;
@@ -189,6 +198,11 @@ BOOL dmlib_dpi::IsValidDpiAwarenessContext(DPI_AWARENESS_CONTEXT value) noexcept
 DPI_AWARENESS_CONTEXT dmlib_dpi::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT dpiContext) noexcept
 {
 	return pfSetThreadDpiAwarenessContext(dpiContext);
+}
+
+BOOL dmlib_dpi::AdjustWindowRectExForDpi(LPRECT lpRect, DWORD dwStyle, BOOL bMenu, DWORD dwExStyle, UINT dpi) noexcept
+{
+	return pfAdjustWindowRectExForDpi(lpRect, dwStyle, bMenu, dwExStyle, dpi);
 }
 
 void dmlib_dpi::loadIcon(HINSTANCE hinst, const wchar_t* pszName, int cx, int cy, HICON& hicon) noexcept

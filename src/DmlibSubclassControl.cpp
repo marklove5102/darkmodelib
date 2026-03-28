@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -3446,8 +3446,7 @@ LRESULT CALLBACK dmlib_subclass::HotKeySubclass(
 
 			RECT rcClient{};
 			::GetClientRect(hWnd, &rcClient);
-			::FillRect(reinterpret_cast<HDC>(wParam), &rcClient,
-				dmlib_win32api::IsDarkModeActive() ? DarkMode::getDlgBackgroundBrush() : ::GetSysColorBrush(COLOR_WINDOW));
+			::FillRect(reinterpret_cast<HDC>(wParam), &rcClient, DarkMode::getCtrlBackgroundBrush());
 			return TRUE;
 		}
 
@@ -3462,6 +3461,69 @@ LRESULT CALLBACK dmlib_subclass::HotKeySubclass(
 			const LRESULT resVal = ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
 			dmlib_hook::unhookSysColor();
 			return resVal;
+		}
+
+		default:
+		{
+			break;
+		}
+	}
+	return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+/**
+ * @brief Window subclass procedure for custom color for date time picker control.
+ *
+ * @param[in]   hWnd        Window handle being subclassed.
+ * @param[in]   uMsg        Message identifier.
+ * @param[in]   wParam      Message-specific data.
+ * @param[in]   lParam      Message-specific data.
+ * @param[in]   uIdSubclass Subclass identifier.
+ * @param[in]   dwRefData   Reserved data (unused).
+ * @return LRESULT Result of message processing.
+ *
+ * @see DarkMode::setDTPCtrlSubclass()
+ * @see DarkMode::removeDTPCtrlSubclass()
+ */
+LRESULT CALLBACK dmlib_subclass::DTPSubclass(
+	HWND hWnd,
+	UINT uMsg,
+	WPARAM wParam,
+	LPARAM lParam,
+	UINT_PTR uIdSubclass,
+	[[maybe_unused]] DWORD_PTR dwRefData
+)
+{
+	switch (uMsg)
+	{
+		case WM_NCDESTROY:
+		{
+			::RemoveWindowSubclass(hWnd, DTPSubclass, uIdSubclass);
+			dmlib_hook::unhookSysColor();
+			break;
+		}
+
+		case WM_PAINT:
+		{
+			if (!DarkMode::isEnabled())
+			{
+				break;
+			}
+
+			dmlib_hook::hookSysColor();
+			const LRESULT resVal = ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
+			dmlib_hook::unhookSysColor();
+			return resVal;
+		}
+
+		// for DTS_APPCANPARSE style
+		case WM_CTLCOLOREDIT:
+		{
+			if (!DarkMode::isEnabled())
+			{
+				break;
+			}
+			return DarkMode::onCtlColorCtrl(reinterpret_cast<HDC>(wParam));
 		}
 
 		default:
