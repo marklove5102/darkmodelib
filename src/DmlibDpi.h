@@ -19,7 +19,7 @@
 
 #include <uxtheme.h>
 
-#if defined(__GNUC__) || (WINVER < _WIN32_WINNT_WIN7)
+#if defined(__GNUC__) || (WINVER <= _WIN32_WINNT_WIN7)
 	#ifndef WM_DPICHANGED
 		#define WM_DPICHANGED 0x02E0
 	#endif
