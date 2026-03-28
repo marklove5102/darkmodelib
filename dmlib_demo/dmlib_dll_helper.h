@@ -14,6 +14,8 @@
 
 #include <windows.h>
 
+#include <cwchar>
+
 #if defined(_MSC_VER)
 #pragma comment(lib, "Comctl32.lib")
 #endif
@@ -63,7 +65,7 @@ namespace dmlib_module
 			return false;
 		}
 
-		wchar_t* lastSlash = ::wcsrchr(fullPath, L'\\');
+		wchar_t* lastSlash = std::wcsrchr(fullPath, L'\\');
 		if (lastSlash == nullptr)
 		{
 			return false;
@@ -71,7 +73,7 @@ namespace dmlib_module
 
 		*(lastSlash + 1) = L'\0'; // keep slash
 
-		if (::wcslen(fullPath) + ::wcslen(dllName) + 1 >= MAX_PATH)
+		if (std::wcslen(fullPath) + std::wcslen(dllName) + 1 >= MAX_PATH)
 		{
 			return false;
 		}
@@ -83,7 +85,7 @@ namespace dmlib_module
 	}
 }
 
-namespace DarkMode
+namespace dmlib
 {
 	struct Colors
 	{

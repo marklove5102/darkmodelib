@@ -44,10 +44,10 @@
 typedef struct _TASKDIALOGCONFIG TASKDIALOGCONFIG; // forward declaration, from <CommCtrl.h>
 
 /**
- * @namespace DarkMode
+ * @namespace dmlib
  * @brief Provides dark mode theming, subclassing, and rendering utilities for most Win32 controls.
  */
-namespace DarkMode
+namespace dmlib
 {
 	struct Colors
 	{
@@ -766,7 +766,7 @@ namespace DarkMode
 	} // extern "C"
 #endif
 
-} // namespace DarkMode
+} // namespace dmlib
 
 #else
 #define _DARKMODELIB_NOT_USED

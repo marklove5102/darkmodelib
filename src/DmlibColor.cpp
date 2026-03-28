@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 /*
- * Copyright (c) 2025 ozone10
+ * Copyright (c) 2025-2026 ozone10
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -21,16 +21,16 @@
 
 #include <cmath>
 
-#include "DarkModeSubclass.h"
+#include "Darkmodelib.h"
 
 namespace dmlib_win32api
 {
 	[[nodiscard]] bool IsDarkModeActive() noexcept;
 }
 
-DarkMode::Colors dmlib_color::getLightColors() noexcept
+dmlib::Colors dmlib_color::getLightColors() noexcept
 {
-	return DarkMode::Colors{
+	return dmlib::Colors{
 		::GetSysColor(COLOR_3DFACE),        // background
 		::GetSysColor(COLOR_WINDOW),        // ctrlBackground
 		dmlib_color::HEXRGB(0xC0DCF3),      // hotBackground

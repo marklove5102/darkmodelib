@@ -23,7 +23,7 @@
 #include "DmlibSubclass.h"
 #include "DmlibWinApi.h"
 
-namespace DarkMode
+namespace dmlib
 {
 	/// Checks if current mode is dark type.
 	[[nodiscard]] bool isDarkDmTypeUsed() noexcept;

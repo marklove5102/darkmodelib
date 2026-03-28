@@ -21,7 +21,7 @@
 #include <string>
 
 #if !defined(DMLIB_DLL)
-#include "DarkModeSubclass.h"
+#include "Darkmodelib.h"
 #else
 #include "dmlib_dll_helper.h"
 #endif
@@ -46,7 +46,7 @@ static HRESULT MyDummyDarkTaskDialogIndirect(
 
 // Example of how to define your function loader
 
-bool DarkMode::loadDarkModeFunctionsFromDll(const wchar_t* dllName)
+bool dmlib::loadDarkModeFunctionsFromDll(const wchar_t* dllName)
 {
 	wchar_t fullPath[MAX_PATH]{};
 	// workaround for SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -118,9 +118,9 @@ static inline UINT WINAPI MyGetDpiForSystem()
 static constexpr size_t MAX_LOADSTRING = 32;
 
 // Global Variables:
-HINSTANCE g_hInst = nullptr;                                    // Current instance
-std::wstring g_szTitle(MAX_LOADSTRING, L'\0');                  // The title bar text
-std::wstring g_szWindowClass(MAX_LOADSTRING, L'\0');            // The main window class name
+HINSTANCE g_hInst = nullptr;                                // Current instance
+auto g_szTitle = std::wstring(MAX_LOADSTRING, L'\0');       // The title bar text
+auto g_szWindowClass = std::wstring(MAX_LOADSTRING, L'\0'); // The main window class name
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	[[maybe_unused]] _In_opt_ HINSTANCE /*hPrevInstance*/,
@@ -131,7 +131,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	SetDllDirectoryW(L"");
 
 #if defined(DMLIB_DLL)
-	if (!DarkMode::loadDarkModeFunctionsFromDll(L"darkmode.dll"))
+	if (!dmlib::loadDarkModeFunctionsFromDll(L"darkmode.dll"))
 	{
 #if DMLIB_FAST_FAIL > 0
 		return FALSE;
@@ -139,9 +139,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	}
 #endif
 
-	DarkMode::initDarkMode();
-	DarkMode::setDarkModeConfigEx(static_cast<UINT>(DarkMode::DarkModeType::dark));
-	DarkMode::setDefaultColors(true);
+	dmlib::initDarkMode();
+	dmlib::setDarkModeConfigEx(static_cast<UINT>(dmlib::DarkModeType::dark));
+	dmlib::setDefaultColors(true);
 
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, g_szTitle.data(), MAX_LOADSTRING);
@@ -297,7 +297,7 @@ static void SelectAndRefreshMode(HWND hWnd, UINT checkID)
 	{
 		case IDM_LIGHT:
 		{
-			if (!DarkMode::isExperimentalActive() && DarkMode::isEnabled())
+			if (!dmlib::isExperimentalActive() && dmlib::isEnabled())
 			{
 				return;
 			}
@@ -308,7 +308,7 @@ static void SelectAndRefreshMode(HWND hWnd, UINT checkID)
 
 		case IDM_CLASSIC:
 		{
-			if (!DarkMode::isEnabled())
+			if (!dmlib::isEnabled())
 			{
 				return;
 			}
@@ -319,7 +319,7 @@ static void SelectAndRefreshMode(HWND hWnd, UINT checkID)
 
 		case IDM_DARK:
 		{
-			if (DarkMode::isExperimentalActive())
+			if (dmlib::isExperimentalActive())
 			{
 				return;
 			}
@@ -333,14 +333,14 @@ static void SelectAndRefreshMode(HWND hWnd, UINT checkID)
 		}
 	}
 
-	DarkMode::setDarkModeConfigEx(dmType);
-	DarkMode::setDefaultColors(true);
-	DarkMode::setDarkTitleBarEx(hWnd, true);
-	DarkMode::setChildCtrlsTheme(hWnd);
+	dmlib::setDarkModeConfigEx(dmType);
+	dmlib::setDefaultColors(true);
+	dmlib::setDarkTitleBarEx(hWnd, true);
+	dmlib::setChildCtrlsTheme(hWnd);
 
 	if (checkID == IDM_CLASSIC)
 	{
-		DarkMode::disableVisualStyle(GetDlgItem(hWnd, static_cast<int>(IdCtrl::treeview)), false);
+		dmlib::disableVisualStyle(GetDlgItem(hWnd, static_cast<int>(IdCtrl::treeview)), false);
 	}
 
 	RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
@@ -383,7 +383,7 @@ static HRESULT CALLBACK TaskDlgCallback(
 
 		case TDN_DIALOG_CONSTRUCTED:
 		{
-			DarkMode::setDarkTaskDlg(hWnd);
+			dmlib::setDarkTaskDlg(hWnd);
 			break;
 		}
 
@@ -446,7 +446,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_CREATE:
 		{
-			DarkMode::setWindowExStyle(hWnd, true, WS_EX_COMPOSITED);
+			dmlib::setWindowExStyle(hWnd, true, WS_EX_COMPOSITED);
 
 			CheckModeMenu(hWnd, IDM_DARK);
 
@@ -1091,12 +1091,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SendMessageW(hStatus, SB_SETTEXT, 2, reinterpret_cast<LPARAM>(L"Panel 2"));
 
 			// --- Dark Mode ---
-			DarkMode::setColorizeTitleBarConfig(true);
-			DarkMode::setDarkWndNotifySafe(hWnd);
-			DarkMode::setWindowEraseBgSubclass(hWnd);
-			DarkMode::setWindowMenuBarSubclass(hWnd);
+			dmlib::setColorizeTitleBarConfig(true);
+			dmlib::setDarkWndNotifySafe(hWnd);
+			dmlib::setWindowEraseBgSubclass(hWnd);
+			dmlib::setWindowMenuBarSubclass(hWnd);
 
-			DarkMode::setWindowExStyle(hWnd, false, WS_EX_COMPOSITED);
+			dmlib::setWindowExStyle(hWnd, false, WS_EX_COMPOSITED);
 
 			break;
 		}
@@ -1129,7 +1129,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					cc.lpCustColors = customColors.data();
 					cc.rgbResult = RGB(0, 120, 215);
 					cc.Flags = CC_FULLOPEN | CC_RGBINIT | CC_ENABLEHOOK;
-					cc.lpfnHook = static_cast<LPCCHOOKPROC>(DarkMode::HookDlgProc);
+					cc.lpfnHook = static_cast<LPCCHOOKPROC>(dmlib::HookDlgProc);
 
 					ChooseColorW(&cc);
 					break;
@@ -1153,7 +1153,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					cf.lpLogFont = &lf;
 					cf.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_EFFECTS;
 					cf.Flags |= CF_ENABLEHOOK | CF_ENABLETEMPLATE;
-					cf.lpfnHook = static_cast<LPCFHOOKPROC>(DarkMode::HookDlgProc);
+					cf.lpfnHook = static_cast<LPCFHOOKPROC>(dmlib::HookDlgProc);
 					cf.hInstance = GetModuleHandleW(nullptr);
 					cf.lpTemplateName = MAKEINTRESOURCE(IDD_DARK_FONT_DIALOG);
 
@@ -1204,7 +1204,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					taskDlgCfg.cxWidth = 0;
 
 					BOOL checkFlag = FALSE;
-					DarkMode::darkTaskDialogIndirect(&taskDlgCfg, nullptr, nullptr, &checkFlag);
+					dmlib::darkTaskDialogIndirect(&taskDlgCfg, nullptr, nullptr, &checkFlag);
 					break;
 				}
 
@@ -1372,17 +1372,17 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, [[maybe_unused]] 
 	{
 		case WM_INITDIALOG:
 		{
-			DarkMode::setDarkWndNotifySafe(hDlg);
+			dmlib::setDarkWndNotifySafe(hDlg);
 			std::wstring dmlVer = L"Darkmodelib demo ";
 #if defined(DMLIB_DLL)
 			dmlVer += L"DLL";
 #endif
 			dmlVer += L" v";
-			dmlVer += std::to_wstring(DarkMode::getLibInfo(static_cast<int>(DarkMode::LibInfo::verMajor)));
+			dmlVer += std::to_wstring(dmlib::getLibInfo(static_cast<int>(dmlib::LibInfo::verMajor)));
 			dmlVer += L'.';
-			dmlVer += std::to_wstring(DarkMode::getLibInfo(static_cast<int>(DarkMode::LibInfo::verMinor)));
+			dmlVer += std::to_wstring(dmlib::getLibInfo(static_cast<int>(dmlib::LibInfo::verMinor)));
 			dmlVer += L'.';
-			dmlVer += std::to_wstring(DarkMode::getLibInfo(static_cast<int>(DarkMode::LibInfo::verRevision)));
+			dmlVer += std::to_wstring(dmlib::getLibInfo(static_cast<int>(dmlib::LibInfo::verRevision)));
 
 			SetDlgItemTextW(hDlg, IDC_ABOUT_VERSION, dmlVer.c_str());
 			return TRUE;

@@ -85,7 +85,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\DarkModeSubclass.h" />
+    <ClInclude Include="..\include\Darkmodelib.h" />
     <ClInclude Include="..\src\DmlibColor.h" />
     <ClInclude Include="..\src\DmlibDpi.h" />
     <ClInclude Include="..\src\DmlibGlyph.h" />
@@ -103,7 +103,7 @@
     <ClInclude Include="..\src\Version.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\DarkModeSubclass.cpp" />
+    <ClCompile Include="..\src\Darkmodelib.cpp" />
     <ClCompile Include="..\src\DmlibColor.cpp" />
     <ClCompile Include="..\src\DmlibDpi.cpp" />
     <ClCompile Include="..\src\DmlibHook.cpp" />
