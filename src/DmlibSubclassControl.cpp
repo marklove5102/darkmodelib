@@ -1167,7 +1167,6 @@ LRESULT CALLBACK dmlib_subclass::UpDownSubclass(
  * @param[in]   rcItem          Rectangle defining the area of the tab item.
  * @param[in]   i               Index of the tab item being painted.
  * @param[in]   iSelTab         Index of the currently selected tab.
- * @param[in]   nTabs           Total number of tabs in the tab control.
  * @param[in]   ptCursor        Point representing the current cursor position.
  */
 static void paintTabItem(
@@ -1176,7 +1175,6 @@ static void paintTabItem(
 	RECT& rcItem,
 	int i,
 	int iSelTab,
-	int nTabs,
 	const POINT& ptCursor
 ) noexcept
 {
@@ -1184,11 +1182,12 @@ static void paintTabItem(
 
 	const bool isHot = ::PtInRect(&rcItem, ptCursor) == TRUE;
 	const bool isSelectedTab = (i == iSelTab);
+	const LONG paddingTop = dmlib_dpi::scale(2, hWnd);
 
 	::InflateRect(&rcItem, -1, -1);
 	rcItem.right += 1;
 
-	std::wstring label(MAX_PATH, L'\0');
+	auto label = std::wstring(MAX_PATH, L'\0');
 	TCITEM tci{};
 	tci.mask = TCIF_TEXT | TCIF_IMAGE | TCIF_STATE;
 	tci.dwStateMask = TCIS_HIGHLIGHTED;
@@ -1198,33 +1197,33 @@ static void paintTabItem(
 	TabCtrl_GetItem(hWnd, i, &tci);
 
 	RECT rcText{ rcItem };
-
-	if (const auto nStyle = ::GetWindowLongPtr(hWnd, GWL_STYLE);
-		(nStyle & TCS_BUTTONS) == TCS_BUTTONS) // is button
+	const auto nStyle = ::GetWindowLongPtr(hWnd, GWL_STYLE);
+	if ((nStyle & TCS_BUTTONS) == TCS_BUTTONS) // is button
 	{
 		const bool isHighlighted = (tci.dwState & TCIS_HIGHLIGHTED) == TCIS_HIGHLIGHTED;
 		::FillRect(hdc, &rcItem, isHighlighted ? dmlib::getHotBackgroundBrush() : dmlib::getDlgBackgroundBrush());
 		::SetTextColor(hdc, isHighlighted ? dmlib::getLinkTextColor() : dmlib::getDarkerTextColor());
+		::FrameRect(hdc, &rcFrame, dmlib::getEdgeBrush());
 	}
 	else
 	{
-		// For consistency getBackgroundBrush()
-		// would be better, than getCtrlBackgroundBrush(),
-		// however default getBackgroundBrush() has almost same color
-		// as getDlgBackgroundBrush()
+		::OffsetRect(&rcText, 0, 1);
 
-		::FillRect(hdc, &rcItem, getBrushFromState(isSelectedTab, isHot));
 		::SetTextColor(hdc, (isHot || isSelectedTab) ? dmlib::getTextColor() : dmlib::getDarkerTextColor());
 
 		if (isSelectedTab)
 		{
 			::OffsetRect(&rcText, 0, -1);
-			::InflateRect(&rcFrame, 0, 1);
+			rcFrame.bottom += 1;
+		}
+		else
+		{
+			rcFrame.top += paddingTop;
 		}
 
-		if (i != nTabs - 1)
+		if (((nStyle & TCS_MULTILINE) != TCS_MULTILINE) && i != 0)
 		{
-			rcFrame.right += 1;
+			rcFrame.left -= 1;
 		}
 	}
 
@@ -1240,9 +1239,28 @@ static void paintTabItem(
 		rcText.left += cx;
 	}
 
-	::DrawText(hdc, label.c_str(), -1, &rcText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	const auto hbrSel = [&isSelectedTab, &isHot]() noexcept
+	{
+		if (isSelectedTab)
+		{
+			return dmlib::getCtrlBackgroundBrush();
+		}
+		if (isHot)
+		{
+			return dmlib::getHotBackgroundBrush();
+		}
+		return dmlib::getDlgBackgroundBrush();
+	}();
 
-	::FrameRect(hdc, &rcFrame, dmlib::getEdgeBrush());
+	dmlib_paint::paintRect(hdc, rcFrame, dmlib::getEdgePen(), hbrSel);
+
+	if (dmlib::isAtLeastWindows11() && isSelectedTab)
+	{
+		const RECT rcHighliteLine{ rcFrame.left, rcFrame.top, rcFrame.right, rcFrame.top + paddingTop };
+		dmlib_paint::paintRect(hdc, rcHighliteLine, dmlib::getHighlightEdgePen(), dmlib::getHighlightEdgeBrush());
+	}
+
+	::DrawText(hdc, label.c_str(), -1, &rcText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
 	// Draw focus keyboard cue
 	if (isSelectedTab && ::GetFocus() == hWnd)
@@ -1250,6 +1268,11 @@ static void paintTabItem(
 		if (const auto uiState = static_cast<DWORD>(::SendMessage(hWnd, WM_QUERYUISTATE, 0, 0));
 			(uiState & UISF_HIDEFOCUS) != UISF_HIDEFOCUS)
 		{
+			if (dmlib::isAtLeastWindows11())
+			{
+				rcFrame.top += paddingTop;
+				rcFrame.bottom -= 1;
+			}
 			::InflateRect(&rcFrame, -2, -1);
 			::DrawFocusRect(hdc, &rcFrame);
 		}
@@ -1278,7 +1301,24 @@ static void paintTabItem(
  */
 static void paintTab(HWND hWnd, HDC hdc, const RECT& rect) noexcept
 {
-	::FillRect(hdc, &rect, dmlib::getDlgBackgroundBrush());
+	const auto iSelTab = TabCtrl_GetCurSel(hWnd);
+	const auto nTabs = TabCtrl_GetItemCount(hWnd);
+
+	int iTab = iSelTab;
+
+	if (const auto nStyle = ::GetWindowLongPtr(hWnd, GWL_STYLE);
+		(nStyle & TCS_BUTTONS) == TCS_BUTTONS)
+	{
+		iTab = nTabs - 1;
+	}
+
+	RECT rcSelTab{};
+	TabCtrl_GetItemRect(hWnd, iTab, &rcSelTab);
+
+	RECT rcTabs{ rect.left, rect.top, rect.right, rcSelTab.bottom - 1 };
+	::FillRect(hdc, &rcTabs, dmlib::getDlgBackgroundBrush());
+	RECT rcCont{ rect.left, rcSelTab.bottom - 1, rect.right, rect.bottom };
+	::FillRect(hdc, &rcCont, dmlib::getCtrlBackgroundBrush());
 
 	const auto hPen = dmlib_paint::GdiObject{ hdc, dmlib::getEdgePen(), true };
 	const auto hFont = dmlib_paint::GdiObject{ hdc, hWnd };
@@ -1296,8 +1336,6 @@ static void paintTab(HWND hWnd, HDC hdc, const RECT& rect) noexcept
 
 	::SetBkMode(hdc, TRANSPARENT);
 
-	const auto iSelTab = TabCtrl_GetCurSel(hWnd);
-	const auto nTabs = TabCtrl_GetItemCount(hWnd);
 	for (int i = 0; i < nTabs; ++i)
 	{
 		RECT rcItem{};
@@ -1309,14 +1347,18 @@ static void paintTab(HWND hWnd, HDC hdc, const RECT& rect) noexcept
 			continue; // Skip to the next iteration when there is no intersection
 		}
 
-		HRGN hClip = ::CreateRectRgnIndirect(&rcItem);
+		RECT rcTmp{ rcItem.left - 1, rcItem.top, rcItem.right, rcItem.bottom };
+		HRGN hClip = ::CreateRectRgnIndirect(&rcTmp);
 		::SelectClipRgn(hdc, hClip);
 
-		paintTabItem(hdc, hWnd, rcItem, i, iSelTab, nTabs, ptCursor);
+		paintTabItem(hdc, hWnd, rcItem, i, iSelTab, ptCursor);
 
 		::SelectClipRgn(hdc, holdClip);
 		::DeleteObject(hClip);
 	}
+
+	::ExcludeClipRect(hdc, rcSelTab.left, rcSelTab.top, rcSelTab.right, rcSelTab.bottom);
+	dmlib_paint::paintFrameRect(hdc, rcCont, dmlib::getEdgePen());
 
 	::SelectClipRgn(hdc, holdClip);
 	if (holdClip != nullptr)
