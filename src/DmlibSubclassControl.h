@@ -132,6 +132,8 @@ namespace dmlib_subclass
 		RECT m_rcPrev{};
 		RECT m_rcNext{};
 		int m_cornerRoundness = 0;
+		int m_iStateIDPrev = UPS_NORMAL;
+		int m_iStateIDNext = UPS_NORMAL;
 		bool m_isHorizontal = false;
 		bool m_wasHotNext = false;
 

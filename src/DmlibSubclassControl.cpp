@@ -780,6 +780,30 @@ static HPEN getEdgePenFromState(bool isDisabled, bool isHot) noexcept
 };
 
 /**
+ * @brief Get up-down control state and client rectangle.
+ *
+ * @param[in]       hWnd        Handle to the up-down control.
+ * @param[in,out]   rcClient    Rectangle for up-down button.
+ *
+ * @see UpDownData
+ * @see paintUpDown()
+ *
+ * @note All 4 variants of up-down control buttons have enums with same values
+ */
+static int getUpDownBtnState(HWND hWnd, const POINT& ptCursor, const RECT& rcBtn) noexcept
+{
+	if (::IsWindowEnabled(hWnd) == FALSE)
+	{
+		return  UPS_DISABLED;
+	}
+	if (::PtInRect(&rcBtn, ptCursor) != FALSE)
+	{
+		return UPS_HOT;
+	}
+	return UPS_NORMAL;
+}
+
+/**
  * @brief Paints an up-down button with the appropriate background and edge based on its state.
  *
  * This function determines the brush and pen to use for painting an up-down button
@@ -832,19 +856,17 @@ static void paintUpDownBtn(
  * @param[in]   hWnd        Handle to the control for dpi calculation.
  * @param[in]   upDownData  Reference to layout and state information (segments, orientation, corner radius).
  * @param[in]   rect        Rectangle that defines the area in which to paint the arrow.
- * @param[in]   isHot       Boolean indicating if the arrow should appear hot (hovered).
+ * @param[in]   clr         Color based on state.
  * @param[in]   isPrev      Boolean indicating the direction of the arrow:
  *                          true for "previous" (left/up) and false for "next" (right/down).
- * @param[in]   isDisabled  Boolean indicating if the arrow is in a disabled state.
  */
 static void paintArrow(
 	HDC hdc,
 	HWND hWnd,
 	const dmlib_subclass::UpDownData& upDownData,
 	const RECT& rect,
-	bool isHot,
-	bool isPrev,
-	bool isDisabled
+	COLORREF clr,
+	bool isPrev
 ) noexcept
 {
 	SIZE size{};
@@ -901,15 +923,14 @@ static void paintArrow(
 		ptsArrow.at(i).y = static_cast<LONG>((ptsArrowSelected.at(i).y * sizeArrow.y) + yPos);
 	}
 
-	const COLORREF clrSelected = getColorFromState(isDisabled, isHot);
-	const auto hBrush = dmlib_paint::GdiObject{ hdc, ::CreateSolidBrush(clrSelected) };
-	const auto hPen = dmlib_paint::GdiObject{ hdc, ::CreatePen(PS_SOLID, 1, clrSelected) };
+	const auto hBrush = dmlib_paint::GdiObject{ hdc, ::CreateSolidBrush(clr) };
+	const auto hPen = dmlib_paint::GdiObject{ hdc, ::CreatePen(PS_SOLID, 1, clr) };
 
 	::Polygon(hdc, ptsArrow.data(), static_cast<int>(ptsArrow.size()));
 }
 
 /**
- * @brief Custom paints an up-down (spinner) control.
+ * @brief Draws a up-down control.
  *
  * Draws the two-button spinner control using either themed drawing or manual
  * owner-drawn logic depending on OS version and theme availability. Supports both
@@ -920,55 +941,43 @@ static void paintArrow(
  * - Rounded corners (optional, based on Windows 11 and parent class)
  * - Direction-aware layout and glyph placement
  *
- * @param[in]       hWnd        Handle to the up-down control.
- * @param[in]       hdc         Device context to draw into.
- * @param[in,out]   upDownData  Reference to layout and state information (segments, orientation, corner radius).
+ * @param[in]       hWnd            Handle to the combo box control.
+ * @param[in]       hdc             Device context to draw into.
+ * @param[in,out]   upDownData      Reference to layout and state information (segments, orientation, corner radius).
+ * @param[in]       iStateIDPrev    State of the up-down previous button.
+ * @param[in]       iStateIDNext    State of the up-down next button.
  *
  * @see UpDownData
+ * @see paintUpDown()
+ * @see paintUpDownBtn()
+ * @see paintUpDownBtn()
  */
-static void paintUpDown(HWND hWnd, HDC hdc, dmlib_subclass::UpDownData& upDownData) noexcept
+static void renderUpDown(
+	HWND hWnd,
+	HDC hdc,
+	dmlib_subclass::UpDownData& upDownData,
+	int iStateIDPrev,
+	int iStateIDNext
+) noexcept
 {
+	::FillRect(hdc, &upDownData.m_rcClient, dmlib::getDlgBackgroundBrush());
+	::SetBkMode(hdc, TRANSPARENT);
+
 	auto& themeData = upDownData.m_themeData;
 	const bool hasTheme = themeData.ensureTheme(hWnd);
 	const auto& hTheme = themeData.getHTheme();
 
-	const bool isDisabled = ::IsWindowEnabled(hWnd) == FALSE;
 	const bool isHorz = upDownData.m_isHorizontal;
 
-	::FillRect(hdc, &upDownData.m_rcClient, dmlib::getDlgBackgroundBrush());
-	::SetBkMode(hdc, TRANSPARENT);
+	RECT rcPrev{ upDownData.m_rcPrev };
+	RECT rcNext{ upDownData.m_rcNext };
 
-	POINT ptCursor{};
-	::GetCursorPos(&ptCursor);
-	::ScreenToClient(hWnd, &ptCursor);
-
-	const bool isHotPrev = ::PtInRect(&upDownData.m_rcPrev, ptCursor) == TRUE;
-	const bool isHotNext = ::PtInRect(&upDownData.m_rcNext, ptCursor) == TRUE;
-
-	upDownData.m_wasHotNext = !isHotPrev && (::PtInRect(&upDownData.m_rcClient, ptCursor) == TRUE);
+	const bool isDisabled = iStateIDPrev == UPS_DISABLED;
+	const bool isHotPrev = iStateIDPrev == UPS_HOT;
+	const bool isHotNext = iStateIDNext == UPS_HOT;
 
 	if (hasTheme && dmlib::isAtLeastWindows11() && dmlib_subclass::isThemePrefered())
 	{
-		// all 4 variants of up-down control buttons have enums with same values
-		auto getStateId = [&isDisabled](bool isHot) noexcept
-		{
-			if (isDisabled)
-			{
-				return UPS_DISABLED;
-			}
-			if (isHot)
-			{
-				return UPS_HOT;
-			}
-			return UPS_NORMAL;
-		};
-
-		const int stateIdPrev = getStateId(isHotPrev);
-		const int stateIdNext = getStateId(isHotNext);
-
-		RECT rcPrev{ upDownData.m_rcPrev };
-		RECT rcNext{ upDownData.m_rcNext };
-
 		int partIdPrev = SPNP_DOWNHORZ;
 		int partIdNext = SPNP_UPHORZ;
 
@@ -981,38 +990,138 @@ static void paintUpDown(HWND hWnd, HDC hdc, dmlib_subclass::UpDownData& upDownDa
 			partIdNext = SPNP_DOWN;
 		}
 
-		::DrawThemeBackground(hTheme, hdc, partIdPrev, stateIdPrev, &rcPrev, nullptr);
-		::DrawThemeBackground(hTheme, hdc, partIdNext, stateIdNext, &rcNext, nullptr);
+		::DrawThemeBackground(hTheme, hdc, partIdPrev, iStateIDPrev, &rcPrev, nullptr);
+		::DrawThemeBackground(hTheme, hdc, partIdNext, iStateIDPrev, &rcNext, nullptr);
+		return;
+	}
+
+	// Button part
+
+	paintUpDownBtn(hdc, rcPrev, isDisabled, isHotPrev, upDownData.m_cornerRoundness);
+	paintUpDownBtn(hdc, rcNext, isDisabled, isHotNext, upDownData.m_cornerRoundness);
+
+	// Glyph part
+
+	const COLORREF clrPrev = getColorFromState(isDisabled, isHotPrev);
+	const COLORREF clrNext = getColorFromState(isDisabled, isHotNext);
+
+	if (hasTheme)
+	{
+		paintArrow(hdc, hWnd, upDownData, rcPrev, clrPrev, true);
+		paintArrow(hdc, hWnd, upDownData, rcNext, clrNext, false);
+		return;
+	}
+
+	const auto hFont = dmlib_paint::GdiObject{ hdc, hWnd };
+
+	static constexpr UINT dtFlags = DT_NOPREFIX | DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP;
+	const LONG offset = isHorz ? 1 : 0;
+
+	RECT rcTextPrev{ rcPrev.left, rcPrev.top, rcPrev.right, rcPrev.bottom - offset };
+	::SetTextColor(hdc, clrPrev);
+	::DrawText(hdc, isHorz ? dmlib_glyph::kArrowLeft : dmlib_glyph::kArrowUp, -1, &rcTextPrev, dtFlags);
+
+	RECT rcTextNext{ rcNext.left + offset, rcNext.top, rcNext.right, rcNext.bottom - offset };
+	::SetTextColor(hdc, clrNext);
+	::DrawText(hdc, isHorz ? dmlib_glyph::kArrowRight : dmlib_glyph::kArrowDown, -1, &rcTextNext, dtFlags);
+}
+
+/**
+ * @brief Custom paints an up-down (spinner) control.
+ *
+ * Draws the up-down control.
+ *
+ * Paint logic:
+ * - Background fill with dialog background brush
+ * - Rounded corners (optional, based on Windows 11 and parent class)
+ * - Direction-aware layout and glyph placement
+ * - Transition effect
+ *
+ * @param[in]       hWnd        Handle to the up-down control.
+ * @param[in]       hdc         Device context to draw into.
+ * @param[in,out]   upDownData  Reference to layout and state information (segments, orientation, corner radius).
+ *
+ * @see UpDownData
+ */
+static void paintUpDown(
+	HWND hWnd,
+	HDC hdc,
+	dmlib_subclass::UpDownData& upDownData
+) noexcept
+{
+	POINT ptCursor{};
+	::GetCursorPos(&ptCursor);
+	::ScreenToClient(hWnd, &ptCursor);
+
+	const int iStateIDPrev = getUpDownBtnState(hWnd, ptCursor, upDownData.m_rcPrev);
+	const int iStateIDNext = getUpDownBtnState(hWnd, ptCursor, upDownData.m_rcNext);
+
+	if (!dmlib_paint::isAnimationEnabled())
+	{
+		upDownData.m_wasHotNext = (iStateIDPrev != UPS_HOT) && (::PtInRect(&upDownData.m_rcClient, ptCursor) == TRUE);
+		renderUpDown(hWnd, hdc, upDownData, iStateIDPrev, iStateIDNext);
+		return;
+	}
+	
+	if (::BufferedPaintRenderAnimation(hWnd, hdc) == TRUE)
+	{
+		return;
+	}
+
+	upDownData.m_themeData.ensureTheme(hWnd);
+	const auto& hTheme = upDownData.m_themeData.getHTheme();
+
+	// Animation part - transition
+
+	BP_ANIMATIONPARAMS animParams{};
+	animParams.cbSize = sizeof(BP_ANIMATIONPARAMS);
+	animParams.style = BPAS_LINEAR;
+	int oldStatePrev = upDownData.m_iStateIDPrev;
+	int oldStateNext = upDownData.m_iStateIDNext;
+	if (iStateIDPrev != upDownData.m_iStateIDPrev && upDownData.m_iStateIDPrev != UPS_NORMAL)
+	{
+		::GetThemeTransitionDuration(hTheme, SPNP_UP, upDownData.m_iStateIDPrev, iStateIDPrev, TMT_TRANSITIONDURATIONS, &animParams.dwDuration);
+		if (iStateIDPrev == UPS_NORMAL)
+		{
+			oldStateNext = iStateIDNext;
+		}
+	}
+
+	if (iStateIDNext != upDownData.m_iStateIDNext && upDownData.m_iStateIDNext != UPS_NORMAL)
+	{
+		::GetThemeTransitionDuration(hTheme, SPNP_UP, upDownData.m_iStateIDNext, iStateIDNext, TMT_TRANSITIONDURATIONS, &animParams.dwDuration);
+		if (iStateIDNext == UPS_NORMAL)
+		{
+			oldStatePrev = iStateIDPrev;
+		}
+	}
+
+	animParams.dwDuration /= 2;
+
+	HDC hdcFrom = nullptr;
+	HDC hdcTo = nullptr;
+	if (HANIMATIONBUFFER hbpAnimation = ::BeginBufferedAnimation(hWnd, hdc, &upDownData.m_rcClient, BPBF_COMPATIBLEBITMAP, nullptr, &animParams, &hdcFrom, &hdcTo);
+		hbpAnimation != nullptr)
+	{
+		if (hdcFrom != nullptr)
+		{
+			renderUpDown(hWnd, hdcFrom, upDownData, oldStatePrev, oldStateNext);
+		}
+
+		if (hdcTo != nullptr)
+		{
+			renderUpDown(hWnd, hdcTo, upDownData, iStateIDPrev, iStateIDNext);
+		}
+
+		upDownData.m_iStateIDPrev = iStateIDPrev;
+		upDownData.m_iStateIDNext = iStateIDNext;
+		::EndBufferedAnimation(hbpAnimation, TRUE);
 	}
 	else
 	{
-		// Button part
-
-		paintUpDownBtn(hdc, upDownData.m_rcPrev, isDisabled, isHotPrev, upDownData.m_cornerRoundness);
-		paintUpDownBtn(hdc, upDownData.m_rcNext, isDisabled, isHotNext, upDownData.m_cornerRoundness);
-
-		// Glyph part
-
-		if (hasTheme)
-		{
-			paintArrow(hdc, hWnd, upDownData, upDownData.m_rcPrev, isHotPrev, true, isDisabled);
-			paintArrow(hdc, hWnd, upDownData, upDownData.m_rcNext, isHotNext, false, isDisabled);
-		}
-		else
-		{
-			const auto hFont = dmlib_paint::GdiObject{ hdc, hWnd };
-
-			static constexpr UINT dtFlags = DT_NOPREFIX | DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP;
-			const LONG offset = isHorz ? 1 : 0;
-
-			RECT rcTextPrev{ upDownData.m_rcPrev.left, upDownData.m_rcPrev.top, upDownData.m_rcPrev.right, upDownData.m_rcPrev.bottom - offset };
-			::SetTextColor(hdc, getColorFromState(isDisabled, isHotPrev));
-			::DrawText(hdc, isHorz ? dmlib_glyph::kArrowLeft : dmlib_glyph::kArrowUp, -1, &rcTextPrev, dtFlags);
-
-			RECT rcTextNext{ upDownData.m_rcNext.left + offset, upDownData.m_rcNext.top, upDownData.m_rcNext.right, upDownData.m_rcNext.bottom - offset };
-			::SetTextColor(hdc, getColorFromState(isDisabled, isHotNext));
-			::DrawText(hdc, isHorz ? dmlib_glyph::kArrowRight : dmlib_glyph::kArrowDown, -1, &rcTextNext, dtFlags);
-		}
+		renderUpDown(hWnd, hdc, upDownData, iStateIDPrev, iStateIDNext);
+		upDownData.m_iStateIDPrev = iStateIDPrev;
+		upDownData.m_iStateIDNext = iStateIDNext;
 	}
 }
 
@@ -1061,7 +1170,8 @@ LRESULT CALLBACK dmlib_subclass::UpDownSubclass(
 				break;
 			}
 
-			if (reinterpret_cast<HDC>(wParam) != hMemDC)
+			if (!dmlib_paint::isAnimationEnabled()
+				&& reinterpret_cast<HDC>(wParam) != hMemDC)
 			{
 				return FALSE;
 			}
@@ -1078,28 +1188,32 @@ LRESULT CALLBACK dmlib_subclass::UpDownSubclass(
 			PAINTSTRUCT ps{};
 			HDC hdc = ::BeginPaint(hWnd, &ps);
 
-			if (!dmlib_paint::isRectValid(ps.rcPaint))
-			{
-				::EndPaint(hWnd, &ps);
-				return 0;
-			}
-
-			if (!pUpDownData->m_isHorizontal)
-			{
-				::OffsetRect(&ps.rcPaint, 2, 0);
-			}
-
 			RECT rcClient{};
 			::GetClientRect(hWnd, &rcClient);
 			pUpDownData->updateRect(rcClient);
-			if (!pUpDownData->m_isHorizontal)
-			{
-				::OffsetRect(&rcClient, 2, 0);
-			}
 
-			dmlib_paint::PaintWithBuffer<UpDownData>(*pUpDownData, hdc, ps,
-				[&]() noexcept { paintUpDown(hWnd, hMemDC, *pUpDownData); },
-				rcClient);
+			if (!dmlib_paint::isAnimationEnabled())
+			{
+				if (!dmlib_paint::isRectValid(ps.rcPaint))
+				{
+					::EndPaint(hWnd, &ps);
+					return 0;
+				}
+
+				if (!pUpDownData->m_isHorizontal)
+				{
+					::OffsetRect(&ps.rcPaint, 2, 0);
+					::OffsetRect(&rcClient, 2, 0);
+				}
+
+				dmlib_paint::PaintWithBuffer<UpDownData>(*pUpDownData, hdc, ps,
+					[&]() noexcept { paintUpDown(hWnd, hMemDC, *pUpDownData); },
+					rcClient);
+			}
+			else
+			{
+				paintUpDown(hWnd, hdc, *pUpDownData);
+			}
 
 			::EndPaint(hWnd, &ps);
 			return 0;
